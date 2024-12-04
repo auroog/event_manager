@@ -20,7 +20,7 @@ class User(Base):
     """
     Represents a user within the application, corresponding to the 'users' table in the database.
     This class uses SQLAlchemy ORM for mapping attributes to database columns efficiently.
-    
+
     Attributes:
         id (UUID): Unique identifier for the user.
         nickname (str): Unique nickname for privacy, required.

@@ -1,4 +1,4 @@
-from builtins import Exception, dict, str
+from builtins import Exception, dict, str, list
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,9 +25,8 @@ async def get_db() -> AsyncSession:
             yield session
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-        
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -44,9 +43,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return {"user_id": user_id, "role": user_role}
 
-def require_role(role: str):
+def require_role(roles: list):
     def role_checker(current_user: dict = Depends(get_current_user)):
-        if current_user["role"] not in role:
+        if current_user["role"] not in roles:
             raise HTTPException(status_code=403, detail="Operation not permitted")
         return current_user
     return role_checker

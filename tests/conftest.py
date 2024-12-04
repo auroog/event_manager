@@ -34,6 +34,7 @@ from app.models.user_model import User, UserRole
 from app.dependencies import get_db, get_settings
 from app.utils.security import hash_password
 from app.utils.template_manager import TemplateManager
+from app.services.email_service import SMTPClient
 from app.services.email_service import EmailService
 from app.services.jwt_service import create_access_token
 
@@ -48,17 +49,27 @@ AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
 
 @pytest.fixture
 def email_service():
-    # Assuming the TemplateManager does not need any arguments for initialization
-    template_manager = TemplateManager()
-    email_service = EmailService(template_manager=template_manager)
-    return email_service
+    # Create the SMTPClient instance
+    smtp_client = SMTPClient(
+        server=settings.smtp_host,
+        port=settings.smtp_port,
+        username=settings.smtp_username,
+        password=settings.smtp_password
+    )
 
+    # Create the TemplateManager instance
+    template_manager = TemplateManager()
+
+    # Create the EmailService instance with both smtp_client and template_manager
+    email_service = EmailService(smtp_client=smtp_client, template_manager=template_manager)
+
+    return email_service
 
 # this is what creates the http client for your api tests
 @pytest.fixture(scope="function")
 async def async_client(db_session):
+    app.dependency_overrides[get_db] = lambda: db_session
     async with AsyncClient(app=app, base_url="http://testserver") as client:
-        app.dependency_overrides[get_db] = lambda: db_session
         try:
             yield client
         finally:
@@ -215,19 +226,23 @@ async def manager_user(db_session: AsyncSession):
 @pytest.fixture
 def user_base_data():
     return {
-        "username": "john_doe_123",
         "email": "john.doe@example.com",
+        "nickname": "john_doe_123",
         "full_name": "John Doe",
+        "first_name": "John",
+        "last_name": "Doe",
         "bio": "I am a software engineer with over 5 years of experience.",
-        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
+        "profile_picture_url": "https://example.com/profile_pictures/john.jpg"
     }
 
 @pytest.fixture
 def user_base_data_invalid():
     return {
-        "username": "john_doe_123",
         "email": "john.doe.example.com",
+        "nickname": "john_doe_123",
         "full_name": "John Doe",
+        "first_name": "Doe",
+        "last_name": "John",
         "bio": "I am a software engineer with over 5 years of experience.",
         "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
     }
@@ -241,7 +256,10 @@ def user_create_data(user_base_data):
 def user_update_data():
     return {
         "email": "john.doe.new@example.com",
+        "nickname": "john_doe_123_updated",
         "full_name": "John H. Doe",
+        "first_name": "John",
+        "last_name": "Doe",
         "bio": "I specialize in backend development with Python and Node.js.",
         "profile_picture_url": "https://example.com/profile_pictures/john_doe_updated.jpg"
     }
@@ -249,8 +267,8 @@ def user_update_data():
 @pytest.fixture
 def user_response_data():
     return {
-        "id": "unique-id-string",
-        "username": "testuser",
+        "id": uuid4(),
+        "nickname": "testuser",
         "email": "test@example.com",
         "last_login_at": datetime.now(),
         "created_at": datetime.now(),
@@ -260,4 +278,19 @@ def user_response_data():
 
 @pytest.fixture
 def login_request_data():
-    return {"username": "john_doe_123", "password": "SecurePassword123!"}
+    return {"email": "john.doe@example.com", "password": "SecurePassword123!"}
+
+@pytest.fixture
+async def user_token(verified_user):
+    token_data = {"sub": str(verified_user.id), "role": "AUTHENTICATED"}
+    return create_access_token(data=token_data)
+
+@pytest.fixture
+async def admin_token(admin_user):
+    token_data = {"sub": str(admin_user.id), "role": "ADMIN"}
+    return create_access_token(data=token_data)
+
+@pytest.fixture
+async def manager_token(manager_user):
+    token_data = {"sub": str(manager_user.id), "role": "MANAGER"}
+    return create_access_token(data=token_data)

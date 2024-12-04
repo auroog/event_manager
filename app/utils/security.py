@@ -10,7 +10,7 @@ logger = getLogger(__name__)
 def hash_password(password: str, rounds: int = 12) -> str:
     """
     Hashes a password using bcrypt with a specified cost factor.
-    
+
     Args:
         password (str): The plain text password to hash.
         rounds (int): The cost factor that determines the computational cost of hashing.
@@ -32,7 +32,7 @@ def hash_password(password: str, rounds: int = 12) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifies a plain text password against a hashed password.
-    
+
     Args:
         plain_password (str): The plain text password to verify.
         hashed_password (str): The bcrypt hashed password.

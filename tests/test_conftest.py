@@ -1,5 +1,8 @@
+"""
+Unit test for user-related features.
+This module contains tests for user creation, locking, unlocking, roles, and more.
+"""
 # test_users.py
-
 from builtins import len
 import pytest
 from httpx import AsyncClient
@@ -17,7 +20,6 @@ async def test_user_creation(db_session, verified_user):
     assert stored_user.email == verified_user.email
     assert verify_password("MySuperPassword$1234", stored_user.hashed_password)
 
-# Apply similar corrections to other test functions
 @pytest.mark.asyncio
 async def test_locked_user(db_session, locked_user):
     result = await db_session.execute(select(User).filter_by(email=locked_user.email))

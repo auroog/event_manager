@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.dependencies import get_settings
 from app.models.user_model import User
 from app.services.user_service import UserService
+from app.utils.smtp_connection import SMTPClient
 
 pytestmark = pytest.mark.asyncio
 
@@ -11,6 +12,7 @@ pytestmark = pytest.mark.asyncio
 async def test_create_user_with_valid_data(db_session, email_service):
     user_data = {
         "email": "valid_user@example.com",
+        "nickname": "valid_nickname",
         "password": "ValidPassword123!",
     }
     user = await UserService.create(db_session, user_data, email_service)
@@ -93,6 +95,7 @@ async def test_list_users_with_pagination(db_session, users_with_same_role_50_us
 async def test_register_user_with_valid_data(db_session, email_service):
     user_data = {
         "email": "register_valid_user@example.com",
+        "nickname": "valid_nickname",
         "password": "RegisterValid123!",
     }
     user = await UserService.register_user(db_session, user_data, email_service)
@@ -103,6 +106,7 @@ async def test_register_user_with_valid_data(db_session, email_service):
 async def test_register_user_with_invalid_data(db_session, email_service):
     user_data = {
         "email": "registerinvalidemail",  # Invalid email
+        "nickname": "a",
         "password": "short",  # Invalid password
     }
     user = await UserService.register_user(db_session, user_data, email_service)
@@ -147,7 +151,7 @@ async def test_verify_email_with_token(db_session, user):
     token = "valid_token_example"  # This should be set in your user setup if it depends on a real token
     user.verification_token = token  # Simulating setting the token in the database
     await db_session.commit()
-    result = await UserService.verify_email_with_token(db_session, user.id, token)
+    result = await UserService.verify_email_with_token(db_session, user.email, token)
     assert result is True
 
 # Test unlocking a user's account

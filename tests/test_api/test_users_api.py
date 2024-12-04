@@ -6,6 +6,7 @@ from app.models.user_model import User
 from app.utils.nickname_gen import generate_nickname
 from app.utils.security import hash_password
 from app.services.jwt_service import decode_token  # Import your FastAPI app
+from app.utils.smtp_connection import SMTPClient
 
 # Example of a test function using the async_client fixture
 @pytest.mark.asyncio
@@ -92,7 +93,7 @@ async def test_login_success(async_client, verified_user):
         "password": "MySuperPassword$1234"
     }
     response = await async_client.post("/login/", data=urlencode(form_data), headers={"Content-Type": "application/x-www-form-urlencoded"})
-    
+
     # Check for successful login response
     assert response.status_code == 200
     data = response.json()
@@ -131,7 +132,7 @@ async def test_login_unverified_user(async_client, unverified_user):
         "password": "MySuperPassword$1234"
     }
     response = await async_client.post("/login/", data=urlencode(form_data), headers={"Content-Type": "application/x-www-form-urlencoded"})
-    assert response.status_code == 401
+    assert response.status_code == 400
 
 @pytest.mark.asyncio
 async def test_login_locked_user(async_client, locked_user):

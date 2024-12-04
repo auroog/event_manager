@@ -6,18 +6,27 @@ from pydantic import ValidationError
 from sqlalchemy import func, null, update, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+
 from app.dependencies import get_email_service, get_settings
 from app.models.user_model import User
 from app.schemas.user_schemas import UserCreate, UserUpdate
 from app.utils.nickname_gen import generate_nickname
 from app.utils.security import generate_verification_token, hash_password, verify_password
-from uuid import UUID
 from app.services.email_service import EmailService
 from app.models.user_model import UserRole
 import logging
 
 settings = get_settings()
+
 logger = logging.getLogger(__name__)
+
+ADMIN = User(nickname=settings.admin_user,
+            email=settings.admin_email,
+            hashed_password=hash_password(settings.admin_password),
+            role=UserRole.ADMIN,
+            is_locked=False,
+            email_verified=True)
 
 class UserService:
     @classmethod
@@ -53,21 +62,21 @@ class UserService:
     async def create(cls, session: AsyncSession, user_data: Dict[str, str], email_service: EmailService) -> Optional[User]:
         try:
             validated_data = UserCreate(**user_data).model_dump()
-            existing_user = await cls.get_by_email(session, validated_data['email'])
-            if existing_user:
+            existing_email = await cls.get_by_email(session, validated_data['email'])
+            existing_nickname = await cls.get_by_nickname(session, validated_data['nickname']) # user must provide nickname as well
+            if existing_email:
                 logger.error("User with given email already exists.")
+                return None
+            elif existing_nickname:
+                logger.error("User with given nickname already exists.")
                 return None
             validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
             new_user = User(**validated_data)
             new_user.verification_token = generate_verification_token()
-            new_nickname = generate_nickname()
-            while await cls.get_by_nickname(session, new_nickname):
-                new_nickname = generate_nickname()
-            new_user.nickname = new_nickname
             session.add(new_user)
             await session.commit()
             await email_service.send_verification_email(new_user)
-            
+
             return new_user
         except ValidationError as e:
             logger.error(f"Validation error during user creation: {e}")
@@ -114,14 +123,12 @@ class UserService:
     @classmethod
     async def register_user(cls, session: AsyncSession, user_data: Dict[str, str], get_email_service) -> Optional[User]:
         return await cls.create(session, user_data, get_email_service)
-    
+
 
     @classmethod
     async def login_user(cls, session: AsyncSession, email: str, password: str) -> Optional[User]:
         user = await cls.get_by_email(session, email)
         if user:
-            if user.email_verified is False:
-                return None
             if user.is_locked:
                 return None
             if verify_password(password, user.hashed_password):
@@ -143,7 +150,6 @@ class UserService:
         user = await cls.get_by_email(session, email)
         return user.is_locked if user else False
 
-
     @classmethod
     async def reset_password(cls, session: AsyncSession, user_id: UUID, new_password: str) -> bool:
         hashed_password = hash_password(new_password)
@@ -158,8 +164,8 @@ class UserService:
         return False
 
     @classmethod
-    async def verify_email_with_token(cls, session: AsyncSession, user_id: UUID, token: str) -> bool:
-        user = await cls.get_by_id(session, user_id)
+    async def verify_email_with_token(cls, session: AsyncSession, email: str, token: str) -> bool:
+        user = await cls.get_by_email(session, email)
         if user and user.verification_token == token:
             user.email_verified = True
             user.verification_token = None  # Clear the token once used
@@ -181,7 +187,7 @@ class UserService:
         result = await session.execute(query)
         count = result.scalar()
         return count
-    
+
     @classmethod
     async def unlock_user_account(cls, session: AsyncSession, user_id: UUID) -> bool:
         user = await cls.get_by_id(session, user_id)
@@ -192,3 +198,11 @@ class UserService:
             await session.commit()
             return True
         return False
+
+    @classmethod
+    async def create_default_admin(cls, session: AsyncSession):
+        admin = await cls.get_by_email(session, ADMIN.email)
+        if not admin:
+            session.add(ADMIN)
+            await session.commit()
+            logger.info("Default admin created!")

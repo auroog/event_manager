@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     algorithm: str = Field(default="HS256", description="Algorithm used for encryption")
     access_token_expire_minutes: int = Field(default=30, description="Expiration time for access tokens in minutes")
     admin_user: str = Field(default='admin', description="Default admin username")
+    admin_email: str = Field(default='admin@example.com', description="Default admin username")
     admin_password: str = Field(default='secret', description="Default admin password")
     debug: bool = Field(default=False, description="Debug mode outputs errors and sqlalchemy queries")
     jwt_secret_key: str = "a_very_secret_key"
@@ -32,15 +33,20 @@ class Settings(BaseSettings):
     # Discord configuration
     discord_bot_token: str = Field(default='NONE', description="Discord bot token")
     discord_channel_id: int = Field(default=1234567890, description="Default Discord channel ID for the bot to interact", example=1234567890)
-    #Open AI Key 
+    #Open AI Ke
     openai_api_key: str = Field(default='NONE', description="Open AI Api Key")
     send_real_mail: bool = Field(default=False, description="use mock")
     # Email settings for Mailtrap
-    smtp_server: str = Field(default='smtp.mailtrap.io', description="SMTP server for sending emails")
-    smtp_port: int = Field(default=2525, description="SMTP port for sending emails")
-    smtp_username: str = Field(default='your-mailtrap-username', description="Username for SMTP server")
-    smtp_password: str = Field(default='your-mailtrap-password', description="Password for SMTP server")
+    smtp_host: str = "sandbox.smtp.mailtrap.io"
+    smtp_port: int = 2525
+    smtp_username: str = "0a2361f3daf9ac"
+    smtp_password: str = "86045293fdc3b9"
+    email_from: str = "no-reply@example.com"
+    email_use_tls: bool = True
+    admin_email: str = "admin@example.com"
 
+    def smtp_server(self):
+        return self.smtp_host
 
     class Config:
         # If your .env file is not in the root directory, adjust the path accordingly.

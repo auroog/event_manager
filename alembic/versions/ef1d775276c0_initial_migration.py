@@ -1,7 +1,7 @@
 """initial migration
 
 Revision ID: ef1d775276c0
-Revises: 
+Revises:
 Create Date: 2024-04-20 21:20:32.839580
 
 """
@@ -53,4 +53,4 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_nickname'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
-    # ### end Alembic commands ###
+    # ## # end Alembic commands ###
